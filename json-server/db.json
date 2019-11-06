@@ -1,0 +1,10 @@
+{
+    "events": [
+        {
+            "title": "demo",
+            "startDate": "2019-11-05T05:00:00",
+            "endDate": "2019-11-06T06:00:00",
+            "allDay": true
+        }
+    ]    
+}
