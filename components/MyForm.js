@@ -1,15 +1,37 @@
 import React, { Component } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, ScrollView } from 'react-native';
 import DatePicker from 'react-native-datepicker';
 import * as Permissions from 'expo-permissions';
 import * as Calendar from 'expo-calendar';
 import Constants from 'expo-constants';
+import { fetchEvents1, addEvent1, updateEvent1, deleteEvent1 } from '../MyFunctions/functions';
 
 function Separator(){
     return (
         <View style={styles.separator}/>
     );
 }
+
+// const RenderEvents = ({ id, event, getEventId}) => {
+//     return(
+//         <View key={id}>
+//             <TouchableOpacity onPress={() => getEventId(event)}>
+//                 <Text>
+//                     {id}
+//                 </Text>
+//                 <Text>
+//                     {event.title}
+//                 </Text>
+//                 <Text>
+//                     Start Date:- {event.startDate}
+//                 </Text>
+//                 <Text>
+//                     End date:- {event.endDate}
+//                 </Text>
+//             </TouchableOpacity>
+//         </View>
+//     );
+// }Create, view or edit events in react native using the standard iOS / Android dialogs
 
 export default class MyForm extends Component {
 
@@ -19,15 +41,32 @@ export default class MyForm extends Component {
             title: '',
             startDate: null,
             endDate: null,
-            allDay: true,
-            show: false,
             calendarId: null,
-            eventId: null
+            eventId: null,
+            allEvents: [],
+            id: null,
+            show: false,
+            update: false
         }
     }
 
     static navigationOptions = {
         title: 'My Form'
+    }
+
+    componentDidMount = async () => {
+        const data = await fetchEvents1();
+        console.log(data);
+        if (!data.error){
+            // this.state.allEvents.push(data);
+            // console.log(this.state.allEvents);
+           await this.setState({
+                allEvents: data
+            });
+            console.log(this.state.allEvents);
+        }else {
+            Alert.alert("Something went wrong!");
+        }
     }
 
     addEvent = async () => {
@@ -43,13 +82,46 @@ export default class MyForm extends Component {
         await this.createEvent(title, new Date(Date.parse(startDate) - (5.5*60*60*1000)), new Date(Date.parse(endDate) - (5.5*60*60*1000)));
     }
 
+    updateEvent = async () => {
+        let sd = this.state.startDate;
+        let ed = this.state.endDate;
+        let startdate = sd.split(' ');
+        let enddate = ed.split(' ');
+        const title=this.state.title;
+        const startDate=startdate[0]+'T'+startdate[1];
+        const endDate=enddate[0]+'T'+enddate[1];
+        console.log(title, startDate, endDate);
+        await this.editEventAsync(title, new Date(Date.parse(startDate) - (5.5*60*60*1000)), new Date(Date.parse(endDate) - (5.5*60*60*1000)));
+    }
+
+    deleteEvent = async () => {
+        let id = this.state.id;
+        let eventId = this.state.eventId;
+
+        const data = await Calendar.deleteEventAsync(eventId);
+        console.log("Event Deleted successfully", data);
+
+        const d = await deleteEvent1(id);
+        console.log("Event deleted successfuly! ", d);
+        Alert.alert('Event deleted successfuly!');
+
+    }
+
     getPermissions = async () => {
         const status = await Permissions.askAsync(Permissions.CALENDAR);
         if(status != 'granted'){
           await Permissions.getAsync(Permissions.CALENDAR);
         }
-      }
+    }
     
+    // getAllEventAsync = async () => {
+    //     // const data = await Calendar.getEventAsync('335', new Date(Date.parse('2019-10-01T05:00') - (5.5*60*60*1000)), new Date(Date.parse('2019-12-05T05:00') - (5.5*60*60*1000)));
+    //     // console.log(data.title);
+
+    //     const data = await Calendar.deleteEventAsync('335');
+    //     console.log("Event Deleted successfully", data);
+    // }
+
     createCalendar = async () => {
         await this.getPermissions();
         if(Constants.platform.android){
@@ -57,9 +129,9 @@ export default class MyForm extends Component {
                     title: 'MeetoCalendar',
                     accessLevel: 'read',
                     ownerAccount: 'mandar',
-                    color: 'black',
+                    color: 'pink',
                     sourceId:'Apple',
-                    name:'myaskjf',
+                    name:'meeto',
                     allowedReminders:[Calendar.AlarmMethod.ALARM, Calendar.AlarmMethod.ALERT],
                     source: {
                         isLocalAccount: true,
@@ -127,33 +199,102 @@ export default class MyForm extends Component {
             organizerEmail: 'mandar@gmail.com',
             guestCanModify: true,
         }
+        // const data = addEvent(details)
         const res = await Calendar.createEventAsync(this.state.calendarId, details);
         console.log(JSON.stringify(res));
-        Alert.alert('Event created succesfully!');
-        this.setState({
+        Alert.alert('Event Added to local calendar!');
+        await this.setState({
             eventId: res
-        })
+        });
+
+        const detailsToDB = {
+            calendarId: this.state.calendarId,
+            eventId: this.state.eventId,
+            title,
+            startDate,
+            endDate,
+        }
+        let response = await addEvent1(detailsToDB);
+        console.log(response);
+        if (!response.error){
+            Alert.alert('Data added to db successfully!');
+        }else {
+            Alert.alert('Something went wrong!');
+        }
     }
     
-    editEventAsync = async (title, startDate, endDate, allDay) => {
+    editEventAsync = async (title, startDate, endDate) => {
+        console.log(title, startDate, endDate);
         await this.getPermissions();
         const mydetails = {
             title,
             startDate,
             endDate,
-            allDay
         }
-        const myres = Calendar.updateEventAsync(this.state.eventId, mydetails, {futureEvents: false, instanceStartDate: new Date(Date.parse('2019-11-10T03:45:00'))});
+        const myres = await Calendar.updateEventAsync(this.state.eventId, mydetails, {futureEvents: false, instanceStartDate: new Date(Date.parse(startDate) - (5.5*60*60*1000))});
         console.log("After update event ", myres);
+        this.setState({ eventId: myres });
         Alert.alert('Event updated successfully!');
+
+        const d = {
+            id: this.state.id,
+            title,
+            startDate,
+            endDate,
+            calendarId: this.state.calendarId,
+            eventId: this.state.eventId
+        }
+        const data = await updateEvent1(d);
+        console.log(data);
     }
     
+    getEventId(details){
+        // console.log(JSON.stringify(details.title));
+        this.setState({
+            id: details.id,
+            calendarId: details.calendarId,
+            eventId: details.eventId,
+            title: details.title,
+            startDate: details.startDate,
+            endDate: details.endDate,
+            update: true,
+        })
+    }
+
     render(){
-        if (!this.state.show){
+        // const MyEvents = allEvents.map((event, id) => <RenderEvents id={id} eventdata={event} getEventId={this.getEventId(event)} />);
+        if (this.state.show){
             return (
-                <View style={StyleSheet.container}>
+                <View>
+                    <TouchableOpacity onPress={() => this.setState({ show: false})}>
+                        <Text>
+                            Back
+                        </Text>
+                    </TouchableOpacity>
+                    <View>
+                    <Text>
+                        {this.state.startDate}
+                    </Text>
+                    <Text>
+                        Start Date:- {this.state.startDate}
+                    </Text>
+                    <Text>
+                        End date:- {this.state.endDate}
+                    </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => this.setState({ show: false, update: true })}>
+                        <Text>
+                            Update
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }else {
+            return (
+                <ScrollView style={StyleSheet.container}>
                     <TextInput
                         style={styles.input}
+                        value={this.state.title}
                         placeholder="Enter title of event"
                         onChangeText={(text) => this.setState({title: text})}
                     />
@@ -179,7 +320,7 @@ export default class MyForm extends Component {
                         },
                         // ... You can check the source to find the other keys.
                         }}
-                        onDateChange={(date) => {this.setState({ startDate: date })}}
+                        onDateChange={(date) => this.setState({ startDate: date })}
                     />
                     <Separator />
                     <Text style={styles.text}>Select End Date:- </Text>
@@ -203,25 +344,44 @@ export default class MyForm extends Component {
                         },
                         // ... You can check the source to find the other keys.
                         }}
-                        onDateChange={(date) => {this.setState({ endDate: date })}}
+                        onDateChange={(date) => this.setState({ endDate: date })}
                     />
                     <Separator />
                     <View style={{ padding: 20 }}>
+                        { this.state.update ? 
+                        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-around'}}>
+                            <TouchableOpacity 
+                                style={styles.button}
+                                onPress={this.updateEvent}>
+                                <Text style={styles.text2}>Update</Text>
+                            </TouchableOpacity> 
+                            <TouchableOpacity 
+                                style={styles.button}
+                                onPress={this.deleteEvent}>
+                                <Text style={styles.text2}>Delete</Text>
+                            </TouchableOpacity> 
+                        </View>
+                        : 
                         <TouchableOpacity 
                             style={styles.button}
                             onPress={this.addEvent}>
                             <Text style={styles.text2}>Submit</Text>
                         </TouchableOpacity>
+                    }
                     </View>
-                </View>
-            );
-        }else {
-            return(
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.text}>{this.state.title}</Text>
-                    <Text style={styles.text}>{this.state.startDate}</Text>
-                    <Text style={styles.text}>{this.state.endDate}</Text>
-                </View>
+
+                    { 
+                        this.state.allEvents.map(event => 
+                        <View style={{ margin: 20 }}>
+                            <TouchableOpacity style={{flex: 1, height: 30, borderRadius: 25, flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'red'}} onPress={this.getEventId.bind(this, event)}>
+                                <Text style={styles.text2}>{event.title}</Text>
+                                <Text style={styles.text2}>{event.startDate}</Text>
+                                <Text style={styles.text2}>{event.endDate}</Text>
+                            </TouchableOpacity>
+                        </View>
+                        )
+                    }
+                </ScrollView>
             );
         }
     }
@@ -229,7 +389,6 @@ export default class MyForm extends Component {
 
 const styles = StyleSheet.create({
     container: {
-        flex:1,
         flexDirection: 'column',
         justifyContent: 'space-around'
     },

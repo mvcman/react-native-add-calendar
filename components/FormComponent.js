@@ -10,13 +10,15 @@ export default class FormComponent extends React.Component{
     super(props);
     this.state = {
       calendarId: '',
-      eventId: ''
+      eventId: '',
     }
   }
 
   static navigationOptions = {
     title: 'Form'
   }
+
+  
 
   getPermissions = async () => {
     const status = await Permissions.askAsync(Permissions.CALENDAR);

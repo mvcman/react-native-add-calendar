@@ -1,10 +1,12 @@
 {
-    "events": [
-        {
-            "title": "demo",
-            "startDate": "2019-11-05T05:00:00",
-            "endDate": "2019-11-06T06:00:00",
-            "allDay": true
-        }
-    ]    
+  "events": [
+    {
+      "calendarId": "90",
+      "eventId": "343",
+      "title": "Metto",
+      "startDate": "2019-12-01T10:30:00.000Z",
+      "endDate": "2019-12-02T10:30:00.000Z",
+      "id": 1
+    }
+  ]
 }

@@ -1,7 +1,7 @@
 
 const baseUrl = 'http://10.176.0.165:3001/';
 
-const fetchEvents = async () => {
+const fetchEvents1 = async () => {
     try {
         let data = await fetch(baseUrl + 'events');
         let m = await data.json();
@@ -12,7 +12,7 @@ const fetchEvents = async () => {
     }
 }
 
-const addEvent = async newEvent => {
+const addEvent1 = async newEvent => {
     try {
         let data = await fetch(baseUrl + 'events', {
             method: 'POST',
@@ -30,10 +30,10 @@ const addEvent = async newEvent => {
     }
 }
 
-const updateEvent = async newEvent => {
+const updateEvent1 = async newEvent => {
     try {
-        let data = await fetch(baseUrl + 'events', {
-            method: 'POST',
+        let data = await fetch(baseUrl + 'events/'+ newEvent.id, {
+            method: 'PUT',
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
@@ -48,4 +48,17 @@ const updateEvent = async newEvent => {
     }
 }
 
-export { fetchEvents, addEvent, updateEvent };
+const deleteEvent1 = async id => {
+    try {
+        let data = await fetch(baseUrl + 'events/'+ id, {
+            method: 'DELETE',
+        });
+        let m = await data.json();
+        return m;
+    }
+    catch (err) {
+        return err;
+    }
+}
+
+export { fetchEvents1, addEvent1, updateEvent1, deleteEvent1 };
